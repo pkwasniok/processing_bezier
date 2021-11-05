@@ -1,9 +1,43 @@
-public class Point{
+float resolution = 0.05;
+
+Point[] anchors = {};
+Point[] controls = {};
+
+public static class Point{
     float x, y;
+
     Point(float x, float y)
     {
         this.x = x;
         this.y = y;
+    }
+
+    public static Point[] append(Point[] arr, Point point)
+    {
+        Point[] output = new Point[arr.length+1];
+        output[output.length-1] = point;
+        for(int i=0; i<arr.length; i++)
+        {
+            output[i] = arr[i];
+        }
+        return output;
+    }
+
+    public static Point[] remove(Point[] arr, int index)
+    {
+        Point[] output = new Point[arr.length-1];
+        int offset = 0;
+        for(int i=0; i<arr.length; i++)
+        {
+            if(i == index)
+            {
+                i++;
+                offset = -1;
+                continue;
+            }
+            output[i+offset] = arr[i];
+        }
+        return output;
     }
 }
 
@@ -14,7 +48,15 @@ Point bezier_point(float t, Point anchor1, Point anchor2, Point control1){
     return point;
 }
 
-float resolution = 0.005;
+int mouseOnPoint(Point[] points, float radius)
+{
+    for(int i=0; i<points.length; i++)
+    {
+        if(abs(points[i].x-mouseX) <= radius && abs(points[i].y-mouseY) <= radius)
+            return i;
+    }
+    return -1;
+}
 
 void setup()
 {
@@ -23,23 +65,53 @@ void setup()
 }
 
 void draw(){
-    background(0);
+    background(255);
 
-    //Create anchor points
-    Point anchor1 = new Point(10, 300);
-    Point anchor2 = new Point(790, 300);
-
-    //Create control points
-    Point control1 = new Point(mouseX, mouseY);
-
-    stroke(255);
-    strokeWeight(5);
-    for(float i=0; i<1-resolution; i+=resolution)
+    if(mousePressed)
     {
-        Point P1 = bezier_point(i, anchor1, anchor2, control1);
-        Point P2 = bezier_point(i+resolution, anchor1, anchor2, control1);
-        colorMode(HSB);
-        stroke(100 + (100 * i), 255, 255);
-        line(P1.x, P1.y, P2.x, P2.y);
+        int selectedControlPoint = mouseOnPoint(controls, 15);
+        if(selectedControlPoint != -1)
+        {
+            controls[selectedControlPoint].x = mouseX;
+            controls[selectedControlPoint].y = mouseY;
+        }
+        else
+        {
+            anchors = Point.append(anchors, new Point(mouseX, mouseY));
+            if(anchors.length > 1)
+                controls = Point.append(controls, new Point(lerp(anchors[anchors.length-1].x, anchors[anchors.length-2].x, 0.5), lerp(anchors[anchors.length-1].y, anchors[anchors.length-2].y, 0.5)));           
+            mousePressed = false;
+        }
+    }
+
+    if(keyPressed)
+    {
+        if(key == 'c')
+        {
+            anchors = new Point[0];
+            controls = new Point[0];
+        }
+        if(key=='u')
+        {
+            if(controls.length >= 1)
+                controls = Point.remove(controls, controls.length-1);
+            anchors = Point.remove(anchors, anchors.length-1);
+        }
+        keyPressed = false;
+    }
+
+    for(int i=0; i<controls.length; i++)
+    {
+        strokeWeight(7);
+        stroke(255,0,0);
+        point(controls[i].x, controls[i].y);
+        stroke(0);
+        strokeWeight(3);
+        for(float j=0; j<1.0000001; j+=resolution)
+        {
+            Point point1 = bezier_point(j, anchors[i], anchors[i+1], controls[i]);
+            Point point2 = bezier_point(j+resolution, anchors[i], anchors[i+1], controls[i]);
+            line(point1.x, point1.y, point2.x, point2.y);
+        }
     }
 }
